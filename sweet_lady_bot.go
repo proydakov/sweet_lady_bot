@@ -103,4 +103,6 @@ func main() {
 
     // Run the bot, this will block.
     boilerplate.RunBot(apiToken, updateFunc, "Photo", "Always responds to text messages with a picture")
+
+    fmt.Printf("Staffing completion")
 }
