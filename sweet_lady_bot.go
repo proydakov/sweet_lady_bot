@@ -91,7 +91,7 @@ func main() {
                 fmt.Printf("Error sending: %s\n", err)
                 return
             }
-            fmt.Printf("->%d, To:\t%s, (Photo)\n", outMsg.Message.ID, outMsg.Message.Chat)
+            fmt.Printf("->%d, To:\t%s, Photo: %s\n", outMsg.Message.ID, outMsg.Message.Chat, name)
         case tbotapi.InlineQueryUpdate:
             fmt.Println("Ignoring received inline query: ", update.InlineQuery.Query)
         case tbotapi.ChosenInlineResultUpdate:
