@@ -10,7 +10,7 @@ import (
     "net/http"
 )
 
-func formatId(id int, size int) string {
+func formatID(id int, size int) string {
     s := strconv.Itoa(id)
     ssize := len(s)
     for i := 0; i < (size - ssize); i++ {
@@ -52,7 +52,7 @@ func downloadFunc(dir string, cin chan int, cout chan bool) {
         if !ok {
             return
         }
-        imagename := formatId(id, 5)
+        imagename := formatID(id, 5)
         urlpath  := site + "/boobs/" + imagename + ".jpg"
         filepath := dir + "/" + imagename + ".jpg"
         res := downloadImage(urlpath, filepath)

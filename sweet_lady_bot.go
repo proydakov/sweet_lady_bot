@@ -14,7 +14,7 @@ import (
     "github.com/mrd0ll4r/tbotapi/examples/boilerplate"
 )
 
-type Config struct {
+type config struct {
     Token    string
     Imagedir string
     Metadir  string
@@ -61,7 +61,7 @@ func main() {
         return;
     }
 
-    var config Config
+    var config config
     array, _ := ioutil.ReadFile(os.Args[1])
     json.Unmarshal(array, &config)
 

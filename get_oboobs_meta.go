@@ -12,8 +12,8 @@ import (
     "encoding/json"
 )
 
-type Data struct {
-    Id     int
+type metaData struct {
+    ID     int
     Rank   int
     Model  string
     Author string
@@ -31,7 +31,7 @@ func downloadData(urlpath string, filepath string, imagepath string) bool {
     body, _ := ioutil.ReadAll(response.Body)
     response.Body.Close()
 
-    var data []Data
+    var data []metaData
     json.Unmarshal(body, &data)
 
     if len(data) < 1 {
