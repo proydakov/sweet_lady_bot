@@ -2,7 +2,7 @@ package main
 
 import (
     "os"
-    "fmt"
+    "log"
     "time"
     "bytes"
     "strings"
@@ -56,19 +56,28 @@ func extractImageName(path string) string {
 }
 
 func main() {
-    if len(os.Args) != 2 {
-        fmt.Printf("<config path>\n")
+    if len(os.Args) < 2 {
+        log.Printf("<config path> <log path *optional*>\n")
         return;
+    }
+
+    if len(os.Args) == 3 {
+        f, err := os.OpenFile(os.Args[3], os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+        if err != nil {
+            log.Fatalf("error opening file: %v", err)
+        }
+        defer f.Close()
+        log.SetOutput(f)
     }
 
     var config config
     array, _ := ioutil.ReadFile(os.Args[1])
     json.Unmarshal(array, &config)
 
-    fmt.Printf("Loading image cache...\n")
+    log.Printf("Loading image cache...\n")
     images := getImageNames(config.Imagedir)
     cache := loadImageCache(images)
-    fmt.Printf("Loaded: %d image cache.\n", len(images))
+    log.Printf("Loaded: %d image cache.\n", len(images))
 
     rand.Seed(time.Now().UTC().UnixNano())
     apiToken := config.Token
@@ -80,14 +89,14 @@ func main() {
             typ := msg.Type()
             if typ != tbotapi.TextMessage {
                 // Ignore non-text messages for now.
-                fmt.Println("Ignoring non-text message")
+                log.Println("Ignoring non-text message")
                 return
             }
             // Note: Bots cannot receive from channels, at least no text messages. So we don't have to distinguish anything here.
             // Display the incoming message.
-            // msg.Chat implements fmt.Stringer, so it'll display nicely.
+            // msg.Chat implements log.Stringer, so it'll display nicely.
             // We know it's a text message, so we can safely use the Message.Text pointer.
-            fmt.Printf("<-%d, From:\t%s, Text: %s \n", msg.ID, msg.Chat, *msg.Text)
+            log.Printf("<-%d, From:\t%s, Text: %s \n", msg.ID, msg.Chat, *msg.Text)
 
             // Send a photo.
             name := getRandImageName(images)
@@ -98,21 +107,21 @@ func main() {
             outMsg, err := api.NewOutgoingPhoto(tbotapi.NewRecipientFromChat(msg.Chat), "girl.jpg", reader).Send()
 
             if err != nil {
-                fmt.Printf("Error sending: %s\n", err)
+                log.Printf("Error sending: %s\n", err)
                 return
             }
-            fmt.Printf("->%d, To:\t%s, Photo: %s\n", outMsg.Message.ID, outMsg.Message.Chat, extractImageName(name))
+            log.Printf("->%d, To:\t%s, Photo: %s\n", outMsg.Message.ID, outMsg.Message.Chat, extractImageName(name))
         case tbotapi.InlineQueryUpdate:
-            fmt.Println("Ignoring received inline query: ", update.InlineQuery.Query)
+            log.Println("Ignoring received inline query: ", update.InlineQuery.Query)
         case tbotapi.ChosenInlineResultUpdate:
-            fmt.Println("Ignoring chosen inline query result (ID): ", update.ChosenInlineResult.ID)
+            log.Println("Ignoring chosen inline query result (ID): ", update.ChosenInlineResult.ID)
         default:
-            fmt.Printf("Ignoring unknown Update type.")
+            log.Printf("Ignoring unknown Update type.")
         }
     }
 
     // Run the bot, this will block.
     boilerplate.RunBot(apiToken, updateFunc, "Photo", "Always responds to text messages with a picture")
 
-    fmt.Printf("Staffing completion")
+    log.Printf("Staffing completion")
 }
