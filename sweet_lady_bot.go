@@ -1,127 +1,136 @@
 package main
 
 import (
-    "os"
-    "log"
-    "time"
-    "bytes"
-    "strings"
-    "io/ioutil"
-    "math/rand"
-    "encoding/json"
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"math/rand"
+	"os"
+	"strings"
+	"time"
 
-    "github.com/mrd0ll4r/tbotapi"
-    "github.com/mrd0ll4r/tbotapi/examples/boilerplate"
+	"github.com/bot-api/telegram"
+	"golang.org/x/net/context"
 )
 
 type config struct {
-    Token    string
-    Imagedir string
-    Metadir  string
+	Token    string
+	Imagedir string
+	Metadir  string
 }
 
 func getImageNames(imagedir string) []string {
-    path := imagedir + "/"
-    files, _ := ioutil.ReadDir(path)
-    var names []string
-    for _, f := range files {
-        names = append(names, path + f.Name())
-    }
-    return names
+	path := imagedir + "/"
+	files, _ := ioutil.ReadDir(path)
+	var names []string
+	for _, f := range files {
+		names = append(names, path+f.Name())
+	}
+	return names
 }
 
 func getRandImageName(images []string) string {
-    size := len(images)
-    index := rand.Intn(size)
-    name := images[index]
-    return name
+	size := len(images)
+	index := rand.Intn(size)
+	name := images[index]
+	return name
 }
 
 func loadImageCache(images []string) map[string][]byte {
-    cache := make(map[string][]byte)
-    for _, image := range images {
-        array, _ := ioutil.ReadFile(image)
-        cache[image] = array
-    }
-    return cache
+	cache := make(map[string][]byte)
+	for _, image := range images {
+		array, _ := ioutil.ReadFile(image)
+		cache[image] = array
+	}
+	return cache
 }
 
 func extractImageName(path string) string {
-    array := strings.Split(path, "/")
-    size  := len(array)
-    if size == 0 {
-        return ""
-    }
-    return array[len(array) - 1]
+	array := strings.Split(path, "/")
+	size := len(array)
+	if size == 0 {
+		return ""
+	}
+	return array[len(array)-1]
 }
 
 func main() {
-    if len(os.Args) < 2 {
-        log.Printf("<config path> <log path *optional*>\n")
-        return;
-    }
+	if len(os.Args) < 2 {
+		log.Printf("<config path> <log path *optional*>\n")
+		return
+	}
 
-    if len(os.Args) == 3 {
-        f, err := os.OpenFile(os.Args[2], os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
-        if err != nil {
-            log.Fatalf("error opening file: %v", err)
-        }
-        defer f.Close()
-        log.SetOutput(f)
-    }
+	if len(os.Args) == 3 {
+		f, err := os.OpenFile(os.Args[2], os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
 
-    var config config
-    array, _ := ioutil.ReadFile(os.Args[1])
-    json.Unmarshal(array, &config)
+	var config config
+	array, _ := ioutil.ReadFile(os.Args[1])
+	json.Unmarshal(array, &config)
 
-    log.Printf("Loading image cache...\n")
-    images := getImageNames(config.Imagedir)
-    cache := loadImageCache(images)
-    log.Printf("Loaded: %d image cache.\n", len(images))
+	log.Printf("Loading image cache...\n")
+	images := getImageNames(config.Imagedir)
+	cache := loadImageCache(images)
+	log.Printf("Loaded: %d images, %d cache\n", len(images), len(cache))
 
-    rand.Seed(time.Now().UTC().UnixNano())
-    apiToken := config.Token
+	rand.Seed(time.Now().UTC().UnixNano())
 
-    updateFunc := func(update tbotapi.Update, api *tbotapi.TelegramBotAPI) {
-        switch update.Type() {
-        case tbotapi.MessageUpdate:
-            msg := update.Message
-            typ := msg.Type()
-            if typ != tbotapi.TextMessage {
-                // Ignore non-text messages for now.
-                log.Println("Ignoring non-text message")
-                return
-            }
-            // Note: Bots cannot receive from channels, at least no text messages. So we don't have to distinguish anything here.
-            // Display the incoming message.
-            // msg.Chat implements log.Stringer, so it'll display nicely.
-            // We know it's a text message, so we can safely use the Message.Text pointer.
-            log.Printf("<-%d, From:\t%s, Text: %s \n", msg.ID, msg.Chat, *msg.Text)
+	token := config.Token
+	debug := false
 
-            // Send a photo.
-            name := getRandImageName(images)
-            data := cache[name]
-            reader := bytes.NewReader(data)
+	if token == "" {
+		log.Fatal("token flag required")
+	}
 
-            // Note: Set at least a correct file extension, the API will check this.
-            outMsg, err := api.NewOutgoingPhoto(tbotapi.NewRecipientFromChat(msg.Chat), "girl.jpg", reader).Send()
+	api := telegram.New(token)
+	api.Debug(debug)
 
-            if err != nil {
-                log.Printf("Error sending: %s\n", err)
-                return
-            }
-            log.Printf("->%d, To:\t%s, Photo: %s\n", outMsg.Message.ID, outMsg.Message.Chat, extractImageName(name))
-        case tbotapi.InlineQueryUpdate:
-            log.Println("Ignoring received inline query: ", update.InlineQuery.Query)
-        case tbotapi.ChosenInlineResultUpdate:
-            log.Println("Ignoring chosen inline query result (ID): ", update.ChosenInlineResult.ID)
-        default:
-            log.Printf("Ignoring unknown Update type.")
-        }
-    }
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-    // Run the bot, this will block.
-    boilerplate.RunBot(apiToken, updateFunc, "Photo", "Always responds to text messages with a picture")
+	if user, err := api.GetMe(ctx); err != nil {
+		log.Panic(err)
+	} else {
+		log.Printf("bot info: %#v", user)
+	}
 
-    log.Printf("Staffing completion")
+	updatesCh := make(chan telegram.Update)
+
+	go telegram.GetUpdates(ctx, api, telegram.UpdateCfg{
+		Timeout: 10, // Timeout in seconds for long polling.
+		Offset:  0,  // Start with the oldest update
+	}, updatesCh)
+
+	for update := range updatesCh {
+		rcvMsg := update.Message
+		if nil == rcvMsg {
+			continue
+		}
+		rid := rcvMsg.MessageID
+		rfrom := rcvMsg.From
+		rtext := rcvMsg.Text
+		uname := rfrom.FirstName + " " + rfrom.LastName
+
+		log.Printf("<-%d, From: %s, Text: %s", rid, uname, rtext)
+
+		// Send a photo.
+		name := getRandImageName(images)
+		data := cache[name]
+
+		sendFile := telegram.NewBytesFile(name, data)
+		upload := telegram.NewPhotoUpload(update.Message.Chat.ID, sendFile)
+
+		outMsg, err := api.Send(ctx, upload)
+		if err != nil {
+			log.Printf("send error: %v", err)
+		}
+		oid := outMsg.MessageID
+		log.Printf("->%d, To: %s, Photo: %s", oid, uname, extractImageName(name))
+	}
+	log.Println("Done")
 }
