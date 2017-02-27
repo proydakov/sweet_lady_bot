@@ -5,8 +5,8 @@ Description=Sweet Lady Telegram Bot
 ExecStart=/home/ubuntu/repository/sweet_lady_bot/sweet_lady_bot /opt/sweet_lady_bot/config.json /opt/sweet_lady_bot/app.log
 WorkingDirectory=/opt/sweet_lady_bot
 Restart=always
-User=ubuntu
-Group=ubuntu
+User=backend
+Group=backend
 
 [Install]
 WantedBy=multi-user.target
