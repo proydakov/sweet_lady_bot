@@ -130,6 +130,7 @@ func main() {
 			log.Printf("send error: %v", err)
 		}
 		oid := outMsg.MessageID
+		log.Printf("chat: %d", update.Message.Chat.ID)
 		log.Printf("->%d, To: %s, Photo: %s", oid, uname, extractImageName(name))
 	}
 	log.Println("Done")
